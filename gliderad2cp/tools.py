@@ -32,6 +32,8 @@ def get_options(verbose=True, **kwargs):
         'pitch_offset' : [0, 'value to be added to pitch to correct for transducer-compass misalignment'],
         'roll_offset' : [0, 'value to be added to roll to correct for transducer-compass misalignment'],
         'heading_offset' : [0, 'value to be added to heading to correct for transducer-compass misalignment'],
+        'beam_angle_pitch_deg' : [47.5, 'Beam angle from instrument Z-axis for beams 1 and 3 (pitch plane), in degrees. Default 47.5 is correct for the Nortek AD2CP. Use 30 for a symmetric Janus RDI DVL.'],
+        'beam_angle_roll_deg' : [25, 'Beam angle from instrument Z-axis for beams 2 and 4 (roll plane), in degrees. Also used as the nominal slant-angle correction factor to convert Velocity Range (z-axis distance) to along-beam distance. Default 25 is correct for the Nortek AD2CP. Use 30 for a symmetric Janus RDI DVL.'],
         }
         
     default = dict()

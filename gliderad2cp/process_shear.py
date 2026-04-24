@@ -335,55 +335,42 @@ def _determine_velocity_measurement_depths(ADCP, options):
     
     
     # All *_Range coordinates are distance along beam. Verified with data.
+    tf = options['beam_angle_pitch_deg']  # beam 1 & 3 angle from instrument Z-axis (pitch plane)
+    ts = options['beam_angle_roll_deg']   # beam 2 & 4 angle from instrument Z-axis (roll plane)
     if options['ADCP_mounting_direction'] == 'top':
         direction = 1
         theta_rad_1 = np.arccos(
-            np.cos(np.deg2rad(47.5 - P)) * np.cos(np.deg2rad(R))
+            np.cos(np.deg2rad(tf - P)) * np.cos(np.deg2rad(R))
         )
         theta_rad_2 = np.arccos(
-            np.cos(np.deg2rad(25 - R)) * np.cos(np.deg2rad(P))
+            np.cos(np.deg2rad(ts - R)) * np.cos(np.deg2rad(P))
         )
         theta_rad_3 = np.arccos(
-            np.cos(np.deg2rad(47.5 + P)) * np.cos(np.deg2rad(R))
+            np.cos(np.deg2rad(tf + P)) * np.cos(np.deg2rad(R))
         )
         theta_rad_4 = np.arccos(
-            np.cos(np.deg2rad(25 + R)) * np.cos(np.deg2rad(P))
+            np.cos(np.deg2rad(ts + R)) * np.cos(np.deg2rad(P))
         )
     else:
         direction = -1
         theta_rad_1 = np.arccos(
-            np.cos(np.deg2rad(47.5 + P)) * np.cos(np.deg2rad(R))
+            np.cos(np.deg2rad(tf + P)) * np.cos(np.deg2rad(R))
         )
         theta_rad_2 = np.arccos(
-            np.cos(np.deg2rad(25 + R)) * np.cos(np.deg2rad(P))
+            np.cos(np.deg2rad(ts + R)) * np.cos(np.deg2rad(P))
         )
         theta_rad_3 = np.arccos(
-            np.cos(np.deg2rad(47.5 - P)) * np.cos(np.deg2rad(R))
+            np.cos(np.deg2rad(tf - P)) * np.cos(np.deg2rad(R))
         )
         theta_rad_4 = np.arccos(
-            np.cos(np.deg2rad(25 - R)) * np.cos(np.deg2rad(P))
+            np.cos(np.deg2rad(ts - R)) * np.cos(np.deg2rad(P))
         )
     
-    # The above functions return angles of each beam from the UP direction based on the attitude of the glider.
-    # Technically, if the glider is pitched 17.4 degrees, 3 beams are at 30.1 degrees.
-    # To remap bins, we need to understand how they are mapped. Is the range equal to distance along beam, or distance along
-    # an instrument relative Z-axis.
-
-    # Following pers. comm. with Nortek staff, it has been confirmed that the Velocity Range values are equal to distances
-    # from the ADCP along a Z-axis. This means that distance along beam needs to be remapped by the cosine of the beam-to-Z-axis cosine.
-    # HOWEVER counterintuitively - they did not use 30.1 degrees. See below correspondence:
-    #
-    # Sven Nylund<Sven.Nylund@nortekgroup.com> : Sent 27 November 2024 10:28 Swedish time to Bastien Queste.
-    # "Sorry for the confusion regarding slant angle yesterday, the correction for slant angle is done at a system level so 1 MHz
-    # instruments on the AD2CP platform (like your glider unit) are corrected for a nominal 25-degree slant angle whenever more 
-    # than two beams are enabled for measurement. So, in your case, the along beam cell size will be 2.21 m when you set the cell
-    # size to 2 m. Like I said yesterday, there is no correction of this based on tilt measurements. There is neither any correction 
-    # of the cell size with regards to the sound velocity, we do the time gating based on a nominal sound velocity of 1500 m/s." 
-    # 
-    # So it is hard-coded for 25 degrees, which doesn't really mesh with the geometry but it's fine as long as we know.
-    # It will be important to keep an eye on firmware updates in case they adjust this down the line as the information is not 
-    # included in any attributes.
-    z_bin_distance = ADCP['Velocity Range'].values/np.cos(np.deg2rad(25))
+    # Velocity Range values are z-axis distances (Nortek convention: corrected at a nominal slant angle).
+    # beam_angle_roll_deg is used as the nominal slant-angle correction factor, matching the
+    # Nortek firmware behavior (25° for AD2CP; set to the actual beam angle for other instruments
+    # whose range values are stored in the same z-axis convention via the rdi_adapter).
+    z_bin_distance = ADCP['Velocity Range'].values/np.cos(np.deg2rad(options['beam_angle_roll_deg']))
 
     ADCP['D1'] = (
         ['time', 'bin'],
@@ -531,8 +518,8 @@ def _rotate_BEAMS_to_XYZ(ADCP, options):
     a = lambda t : 1 / (2 * np.sin(t * np.pi / 180))
     b = lambda t : 1 / (4 * np.cos(t * np.pi / 180))
     c = 1  # for convex transducer head
-    tf = 47.5  # theta front - Beam 1 and 3 angle from Z
-    ts = 25  # theta side - Beam 2 and 4 angle from Z
+    tf = options['beam_angle_pitch_deg']  # theta front - Beam 1 and 3 angle from Z
+    ts = options['beam_angle_roll_deg']   # theta side - Beam 2 and 4 angle from Z
 
     V1 = ADCP['V1'].values
     V2 = ADCP['V2'].values
