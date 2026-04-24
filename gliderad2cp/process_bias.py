@@ -71,7 +71,12 @@ def _linear_regression(x,y,options,c=None,mask=True,plot=False):
     _gd = np.isfinite(x+y) & mask & (np.abs(y) < 0.01) & (np.abs(x) > 100)
     x = np.reshape(x[_gd],[-1,1])
     y = np.reshape(y[_gd],[-1,1])
-    
+
+    if len(x) < 2:  # Not enough data after filtering; cannot fit regression
+        if plot:
+            plt.title("Insufficient data for regression")
+        return np.nan
+
     if options['weight_shear_bias_regression']:
         weights = x.flatten() # Weight by distance travelled, helps with weird shear spikes present on short/shallow dives
     else:
@@ -272,11 +277,12 @@ def regress_bias(currents,options):
         for l1 in directions:
             for l2 in directions:
                 idx += 1
-                score = score + np.abs(_linear_regression(
+                lr = _linear_regression(
                         currs[f'displacement_though_water_{l1}'].values, 
                         currs[f'velocity_{l2}_DAC_reference_sb_corrected'].sel(depth=slice(upper,lower)).differentiate('depth').mean(dim='depth', skipna=True).values,
                         options,
-                    ))*1e9
+                    )
+                score = score + (np.abs(lr)*1e9 if np.isfinite(lr) else 0.)
         return score
     
     results = fmin(__score, [0,0], args=(currents,options), maxiter=300, disp=True, xtol=1e-9, ftol=1e-9)
